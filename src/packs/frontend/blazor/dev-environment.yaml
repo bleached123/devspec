@@ -1,0 +1,17 @@
+vscode:
+  extensions:
+    - ms-dotnettools.csharp
+    - ms-dotnettools.csdevkit
+    - bradlc.vscode-tailwindcss
+    - syncfusioninc.blazor-vscode-extensions
+  settings:
+    "[razor]":
+      editor.defaultFormatter: ms-dotnettools.csharp
+    "files.associations":
+      "*.razor": razor
+devcontainer:
+  features:
+    # Ensures .NET is available even when the backend isn't .NET-based.
+    # Version flows from frontend.devcontainer_tag in the merged tech-stack.
+    "ghcr.io/devcontainers/features/dotnet:2":
+      version: "${frontend.devcontainer_tag}"

@@ -1,0 +1,20 @@
+backend:
+  primary: rust
+  language: rust
+  edition: "2024"
+  toolchain: stable
+  devcontainer_tag: "1"
+  async_runtime: tokio
+  testing:
+    primary: cargo-test
+    runner: cargo-nextest
+    conventions:
+      - unit-tests-in-same-file
+      - integration-tests-in-tests-dir
+  commands:
+    format: "cargo fmt"
+    format_check: "cargo fmt --check"
+    lint: "cargo clippy --all-targets --all-features -- -D warnings"
+    typecheck: "cargo check --all-targets"
+    test_unit: "cargo test --lib --bins"
+    test_integration: "cargo test --tests"

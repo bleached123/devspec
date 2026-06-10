@@ -1,0 +1,19 @@
+backend:
+  primary: dotnet
+  framework: aspnetcore
+  language: csharp
+  language_version: "14"
+  target: net10.0
+  devcontainer_tag: "10.0"
+  testing:
+    primary: xunit
+    conventions:
+      - one-test-class-per-aggregate
+      - integration-tests-hit-real-db
+  commands:
+    format: "dotnet format"
+    format_check: "dotnet format --verify-no-changes"
+    lint: "dotnet build -warnaserror --no-restore"
+    typecheck: "dotnet build --no-restore"
+    test_unit: "dotnet test --filter Category!=Integration --no-build"
+    test_integration: "dotnet test --filter Category=Integration --no-build"

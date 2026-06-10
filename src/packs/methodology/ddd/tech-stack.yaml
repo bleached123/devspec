@@ -1,0 +1,16 @@
+methodology:
+  primary: domain-driven-design
+  principles:
+    - ubiquitous-language
+    - bounded-contexts
+    - separation-of-concerns
+    - tell-dont-ask
+    - SOLID
+  patterns:
+    - aggregate-root
+    - value-object
+    - domain-event
+    - repository
+    - bounded-context
+    - anti-corruption-layer
+    - specification

@@ -1,0 +1,39 @@
+pipeline:
+  primary: github-actions
+  runs_on: ubuntu-24.04
+  node_version: "22"
+  concurrency: cancel-in-progress
+  permissions: least-privilege
+  required_checks:
+    - security
+    - quality
+    - test-unit
+    - test-integration
+    - test-e2e
+    - devspec
+  test_layers:
+    unit: required
+    integration: required
+    e2e: required-if-frontend
+  security:
+    secret_scanner: gitleaks
+    dependency_review: enabled
+    fail_on_severity: high
+    pinned_action_versions: major-tag-or-sha
+    least_privilege_token: true
+    require_oidc_for_cloud: true
+  caching:
+    docker_buildx: enabled
+    language_native: enabled
+  branch_protection:
+    required_status_checks:
+      - "ci / security"
+      - "ci / quality"
+      - "ci / test-unit"
+      - "ci / test-integration"
+      - "ci / test-e2e"
+      - "ci / devspec"
+    enforce_admins: true
+    require_pull_request_reviews: true
+    require_signed_commits: recommended
+    require_linear_history: recommended

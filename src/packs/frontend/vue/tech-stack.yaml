@@ -1,0 +1,17 @@
+frontend:
+  primary: vue
+  framework: vue
+  vue_version: "3.5"
+  language: typescript
+  language_version: "5.7"
+  node_version: "22"
+  bundler: vite
+  bundler_version: "6"
+  styling: tailwind
+  testing:
+    e2e: playwright
+    unit: vitest
+    component: vue-test-utils
+  commands:
+    build: "npm run build"
+    test_e2e: "npx playwright test"

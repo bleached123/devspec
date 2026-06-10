@@ -1,0 +1,9 @@
+infrastructure:
+  primary: kubernetes
+  cluster_version: "1.31"
+  kubectl_version: "1.31"
+  helm_version: "3.16"
+  manifest_format: yaml
+  package_manager: helm
+  namespacing: per-environment
+  deployment: rolling-update

@@ -1,0 +1,193 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+
+  test:
+    name: test (${{ matrix.os }} · node ${{ matrix.node }})
+    needs: typecheck
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ['22', '24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+
+  smoke:
+    name: cli smoke (init → plan → map → ci init → release --dry-run)
+    needs: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - name: Exercise the built CLI end-to-end
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli="$GITHUB_WORKSPACE/dist/cli.js"
+          smoke_dir=$(mktemp -d)
+          cd "$smoke_dir"
+
+          git init -q -b main
+          git config user.email "ci@example.com"
+          git config user.name "CI"
+          git config commit.gpgsign false
+          git config tag.gpgsign false
+
+          echo "::group::devspec init"
+          node "$cli" init --backend go --architecture clean-architecture --methodology tdd --pipeline github
+          test -f .devspec/devspec.yaml
+          test -f .devspec/release.yaml
+          test -f .devspec/standards/standards.md
+          test -f CLAUDE.md
+          echo "::endgroup::"
+
+          echo "::group::devspec env generate"
+          node "$cli" env generate
+          test -f Dockerfile
+          test -f docker-compose.yml
+          test -f .vscode/settings.json
+          echo "::endgroup::"
+
+          echo "::group::devspec plan"
+          node "$cli" plan "Smoke test change"
+          test -f .devspec/projects/smoke-test-change/contract.md
+          test -f .devspec/projects/smoke-test-change/discovery.md
+          test -f .devspec/projects/smoke-test-change/status.yaml
+          echo "::endgroup::"
+
+          echo "::group::devspec map"
+          node "$cli" map
+          test -f .devspec/maps/workspace.md
+          test -f .devspec/maps/index.md
+          test -f .devspec/maps/change-smoke-test-change.md
+          test -f .devspec/maps/contract-smoke-test-change.md
+          test -f .devspec/maps/deps-smoke-test-change.md
+          test -f .devspec/maps/arch.md
+          echo "::endgroup::"
+
+          echo "::group::devspec ci init"
+          node "$cli" ci init
+          test -f .github/workflows/ci.yml
+          test -f .github/workflows/release.yml
+          test -f .github/pull_request_template.md
+          # Generated release.yml contains expected gates
+          grep -q "name: release" .github/workflows/release.yml
+          grep -q "deploy-staging" .github/workflows/release.yml
+          grep -q "deploy-production" .github/workflows/release.yml
+          grep -q "ghcr.io" .github/workflows/release.yml
+          echo "::endgroup::"
+
+          echo "::group::devspec doctor + check"
+          node "$cli" doctor
+          node "$cli" check
+          echo "::endgroup::"
+
+          echo "::group::devspec release --dry-run"
+          git add -A
+          git commit -q -m "chore: scaffold"
+          echo "package x" > x.go
+          git add x.go
+          git commit -q -m "feat: add x endpoint"
+          out=$(node "$cli" release --dry-run)
+          echo "$out"
+          echo "$out" | grep -q "v0.1.0"
+          echo "$out" | grep -q "minor bump"
+          # Dry-run must NOT have created a tag
+          [ -z "$(git tag -l)" ] || (echo "release --dry-run leaked a tag" && exit 1)
+          echo "::endgroup::"
+
+          echo "✓ CLI smoke test passed"
+
+  dogfood:
+    name: devspec on itself
+    needs: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - name: Run devspec doctor + check + coherence against this repo
+        # The repo opts in by having a .devspec/ workspace. If it doesn't yet,
+        # this step skips with a friendly note rather than failing the build.
+        # Once a maintainer runs `devspec init` here, the step starts gating
+        # automatically — drift in DevSpec's own spec docs will fail CI.
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli="$GITHUB_WORKSPACE/dist/cli.js"
+
+          if [ ! -d .devspec ]; then
+            echo "::notice title=Dogfood::No .devspec/ workspace in this repo yet — skipping."
+            echo "  To enable: run \`node dist/cli.js init ...\` once and commit the result."
+            exit 0
+          fi
+
+          node "$cli" doctor
+          node "$cli" check
+
+          shopt -s nullglob
+          had_drift=0
+          for dir in .devspec/projects/*/; do
+            slug="$(basename "$dir")"
+            echo "::group::coherence $slug"
+            if ! node "$cli" coherence "$slug" --json --block-only > /dev/null; then
+              echo "::error title=DevSpec drift in $slug::Blocking drift in DevSpec's own spec docs. Run \`devspec coherence $slug\` locally."
+              had_drift=1
+            fi
+            echo "::endgroup::"
+          done
+          if [ "$had_drift" -ne 0 ]; then exit 1; fi
+
+  # Backstop: the Docker-based path the contributors use locally must keep
+  # working. Single job, single OS — the matrix already covers correctness.
+  docker-parity:
+    name: docker-compose parity
+    needs: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image and run typecheck + tests via docker-compose
+        run: |
+          docker compose build test
+          docker compose run --rm typecheck
+          docker compose run --rm test

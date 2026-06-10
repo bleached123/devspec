@@ -1,0 +1,12 @@
+methodology:
+  primary: test-driven-development
+  cycle: red-green-refactor
+  principles:
+    - SOLID
+    - DRY
+    - YAGNI
+    - KISS
+  patterns:
+    - arrange-act-assert
+    - test-doubles
+    - given-when-then

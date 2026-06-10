@@ -1,0 +1,4 @@
+architecture:
+  primary: vertical-slice
+  organization: feature-folder
+  dependency_direction: per-slice

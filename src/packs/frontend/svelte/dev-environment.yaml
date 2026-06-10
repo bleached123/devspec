@@ -1,0 +1,19 @@
+vscode:
+  extensions:
+    - svelte.svelte-vscode
+    - bradlc.vscode-tailwindcss
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+    - ms-playwright.playwright
+  settings:
+    "[svelte]":
+      editor.defaultFormatter: svelte.svelte-vscode
+    "svelte.enable-ts-plugin": true
+    "tailwindCSS.includeLanguages":
+      svelte: html
+devcontainer:
+  features:
+    # Ensures Node is available even when the backend isn't Node-based.
+    # Version flows from frontend.node_version in the merged tech-stack.
+    "ghcr.io/devcontainers/features/node:1":
+      version: "${frontend.node_version}"

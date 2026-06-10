@@ -1,0 +1,7 @@
+infrastructure:
+  primary: terraform
+  cli_version: "1.10"
+  version_constraint: ">=1.10"
+  backend: s3
+  state_locking: dynamodb
+  module_layout: per-environment

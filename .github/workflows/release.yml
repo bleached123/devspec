@@ -1,0 +1,108 @@
+name: release
+
+# Publishes devspec to npm on every v*.*.* tag.
+#
+# One-time setup (per repo):
+#   1. Create an npm Granular Access Token with publish rights for the
+#      `devspec` package on https://www.npmjs.com/settings/<user>/tokens
+#   2. Add it as a repo secret named NPM_TOKEN
+#      (Settings → Secrets and variables → Actions → New repository secret)
+#   3. Create a GitHub Environment called `npm-publish` (Settings →
+#      Environments → New environment). Optional: require manual reviewer
+#      approval before each publish, especially while devspec is pre-1.0.
+#
+# Cutting a release (the normal flow):
+#   $ devspec release          # parses conventional commits, asks confirmation
+#   $ git push --follow-tags   # ships the tag → this workflow runs
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+concurrency:
+  # Never cancel an in-flight publish.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (typecheck + test + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Verify package.json version matches the tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"   # v0.1.0 → 0.1.0
+          pkg=$(node -p "require('./package.json').version")
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::Tag is v$tag but package.json says $pkg — bump package.json first or recreate the tag."
+            exit 1
+          fi
+          echo "✓ package.json version $pkg matches tag v$tag"
+
+  publish:
+    name: publish to npm
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: npm-publish
+      url: https://www.npmjs.com/package/devspec
+    permissions:
+      contents: write   # to create the GitHub Release
+      id-token: write   # for npm provenance (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - run: npm run build
+
+      - name: Publish to npm (with provenance)
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Extract changelog entry for this tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          if [ -f CHANGELOG.md ]; then
+            # Capture lines from `## <tag>` up to (but not including) the next `## `
+            awk -v tag="## ${tag}" '
+              $0 ~ "^## " {if (in_section) exit; if ($0 ~ "^"tag) {in_section=1; next}}
+              in_section {print}
+            ' CHANGELOG.md > release_notes.md
+          fi
+          if [ ! -s release_notes.md ]; then
+            echo "_See auto-generated notes below._" > release_notes.md
+          fi
+          echo "--- release_notes.md ---"
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release_notes.md
+          # softprops appends auto-generated notes after body_path content.
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}

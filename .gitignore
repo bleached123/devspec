@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.vscode/
+!.vscode/extensions.json
+coverage/
+
+# DevSpec worktrees (created by `devspec worktree add <slug>`)
+.devspec/worktrees/
+
+# DevSpec loop state (per-machine, not portable)
+.devspec/loop-state.yaml

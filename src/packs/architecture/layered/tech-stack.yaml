@@ -1,0 +1,7 @@
+architecture:
+  primary: layered
+  layers:
+    - Presentation
+    - Business
+    - Data
+  dependency_direction: top-down

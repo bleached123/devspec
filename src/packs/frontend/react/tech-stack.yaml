@@ -1,0 +1,17 @@
+frontend:
+  primary: react
+  framework: react
+  react_version: "19"
+  language: typescript
+  language_version: "5.7"
+  node_version: "22"
+  bundler: vite
+  bundler_version: "6"
+  styling: tailwind
+  testing:
+    e2e: playwright
+    unit: vitest
+    component: react-testing-library
+  commands:
+    build: "npm run build"
+    test_e2e: "npx playwright test"

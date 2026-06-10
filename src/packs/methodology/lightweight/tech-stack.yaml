@@ -1,0 +1,7 @@
+methodology:
+  primary: lightweight
+  principles:
+    - YAGNI
+    - KISS
+    - DRY-where-it-hurts
+  patterns: []

@@ -1,0 +1,20 @@
+vscode:
+  extensions:
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+    - bradlc.vscode-tailwindcss
+    - ms-playwright.playwright
+    - dsznajder.es7-react-js-snippets
+  settings:
+    "[typescriptreact]":
+      editor.defaultFormatter: esbenp.prettier-vscode
+    "[typescript]":
+      editor.defaultFormatter: esbenp.prettier-vscode
+    "typescript.tsdk": "node_modules/typescript/lib"
+    "tailwindCSS.experimental.classRegex":
+      - ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+      - ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+devcontainer:
+  features:
+    "ghcr.io/devcontainers/features/node:1":
+      version: "${frontend.node_version}"

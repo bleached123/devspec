@@ -1,0 +1,12 @@
+methodology:
+  primary: behavior-driven-development
+  cycle: discover-formulate-automate
+  language: gherkin
+  principles:
+    - ubiquitous-language
+    - examples-over-rules
+    - outside-in
+  patterns:
+    - given-when-then
+    - scenario-outline
+    - background

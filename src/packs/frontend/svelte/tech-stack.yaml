@@ -1,0 +1,15 @@
+frontend:
+  primary: svelte
+  framework: sveltekit
+  svelte_version: "5"
+  language: typescript
+  language_version: "5.7"
+  node_version: "22"
+  bundler: vite
+  styling: tailwind
+  testing:
+    e2e: playwright
+    unit: vitest
+  commands:
+    build: "npm run build"
+    test_e2e: "npx playwright test"

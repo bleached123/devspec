@@ -1,0 +1,19 @@
+backend:
+  primary: node
+  language: typescript
+  language_version: "5.7"
+  runtime: node22
+  devcontainer_tag: "22"
+  module_system: esm
+  package_manager: pnpm
+  testing:
+    primary: vitest
+    conventions:
+      - integration-tests-hit-real-services
+  commands:
+    format: "pnpm prettier --write ."
+    format_check: "pnpm prettier --check ."
+    lint: "pnpm eslint . --max-warnings=0"
+    typecheck: "pnpm tsc --noEmit"
+    test_unit: "pnpm vitest run --exclude '**/*.integration.test.*'"
+    test_integration: "pnpm vitest run --testNamePattern=integration"

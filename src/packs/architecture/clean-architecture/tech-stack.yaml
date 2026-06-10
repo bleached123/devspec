@@ -1,0 +1,8 @@
+architecture:
+  primary: clean-architecture
+  layers:
+    - Domain
+    - Application
+    - Infrastructure
+    - Web
+  dependency_direction: inward

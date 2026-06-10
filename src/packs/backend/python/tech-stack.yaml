@@ -1,0 +1,21 @@
+backend:
+  primary: python
+  language: python
+  version: "3.14"
+  devcontainer_tag: "3.14"
+  framework: fastapi
+  dependency_manager: uv
+  formatter: ruff
+  type_checker: pyright
+  testing:
+    primary: pytest
+    conventions:
+      - tests-mirror-package-layout
+      - one-test-file-per-module
+  commands:
+    format: "ruff format ."
+    format_check: "ruff format --check ."
+    lint: "ruff check ."
+    typecheck: "pyright"
+    test_unit: "pytest -m 'not integration' --strict-markers"
+    test_integration: "pytest -m integration --strict-markers"

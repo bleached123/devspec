@@ -1,0 +1,13 @@
+frontend:
+  primary: blazor
+  framework: blazor-united
+  language: csharp
+  target: net10.0
+  devcontainer_tag: "10.0"
+  styling: tailwind
+  testing:
+    e2e: playwright
+    component: bunit
+  commands:
+    build: "dotnet publish -c Release"
+    test_e2e: "dotnet test --filter Category=E2E"

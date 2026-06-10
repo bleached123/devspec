@@ -1,0 +1,17 @@
+vscode:
+  extensions:
+    - ms-kubernetes-tools.vscode-kubernetes-tools
+    - redhat.vscode-yaml
+    - timonwong.shellcheck
+  settings:
+    "yaml.schemas":
+      "kubernetes": "/*.k8s.yaml"
+    "yaml.format.enable": true
+devcontainer:
+  features:
+    # Installs kubectl + helm pinned to the versions declared in tech-stack.yaml.
+    # Anyone touching the cluster gets the same client tools — across hosts and CI.
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1":
+      version: "${infrastructure.kubectl_version}"
+      helm: "${infrastructure.helm_version}"
+      minikube: "none"

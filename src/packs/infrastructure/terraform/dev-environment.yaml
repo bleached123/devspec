@@ -1,0 +1,17 @@
+vscode:
+  extensions:
+    - hashicorp.terraform
+    - hashicorp.hcl
+    - 4ops.terraform
+  settings:
+    "[terraform]":
+      editor.defaultFormatter: hashicorp.terraform
+      editor.formatOnSave: true
+    "terraform.experimentalFeatures.validateOnSave": true
+devcontainer:
+  features:
+    # Installs Terraform CLI pinned to the version declared in tech-stack.yaml.
+    # Same binary across every contributor and CI run.
+    "ghcr.io/devcontainers/features/terraform:1":
+      version: "${infrastructure.cli_version}"
+      tflint: "latest"
