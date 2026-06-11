@@ -18,3 +18,4 @@ backend:
     typecheck: "cargo check --all-targets"
     test_unit: "cargo test --lib --bins"
     test_integration: "cargo test --tests"
+    audit: "cargo audit"

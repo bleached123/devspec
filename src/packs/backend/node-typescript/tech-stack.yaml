@@ -17,3 +17,4 @@ backend:
     typecheck: "pnpm tsc --noEmit"
     test_unit: "pnpm vitest run --exclude '**/*.integration.test.*'"
     test_integration: "pnpm vitest run --testNamePattern=integration"
+    audit: "pnpm audit --audit-level=high"

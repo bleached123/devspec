@@ -17,3 +17,4 @@ backend:
     typecheck: "dotnet build --no-restore"
     test_unit: "dotnet test --filter Category!=Integration --no-build"
     test_integration: "dotnet test --filter Category=Integration --no-build"
+    audit: "! dotnet list package --vulnerable --include-transitive | grep -iE 'critical|high'"

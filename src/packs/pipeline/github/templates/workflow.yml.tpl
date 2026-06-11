@@ -157,6 +157,9 @@ jobs:
   devspec:
     name: devspec
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -167,23 +170,14 @@ jobs:
           node-version: '22'
 
       # ─────────────────────────────────────────────────────────────────────
-      # Install devspec — CHOOSE ONE and delete the rest. The default exits
-      # with a clear error so this workflow can't silently pass without
-      # actually running devspec.
+      # Install devspec. Defaults to the published npm package. Alternatives
+      # if you need a pinned fork or unreleased build:
+      #   npm install -g github:YOUR_ORG/devspec#main
+      #   git clone --depth 1 https://github.com/YOUR_ORG/devspec /tmp/devspec \
+      #     && cd /tmp/devspec && npm ci && npm run build && npm link
       # ─────────────────────────────────────────────────────────────────────
       - name: Install devspec
-        run: |
-          # Option 1 — from npm (once devspec is published):
-          # npm install -g devspec
-          #
-          # Option 2 — from a git source (devspec repo, branch or tag):
-          # npm install -g github:YOUR_ORG/devspec#main
-          #
-          # Option 3 — from source clone + build:
-          # git clone --depth 1 --branch main https://github.com/YOUR_ORG/devspec /tmp/devspec
-          # cd /tmp/devspec && npm ci && npm run build && npm link
-          echo "::error::Edit .github/workflows/ci.yml and choose a devspec install method"
-          exit 1
+        run: npm install -g devspec-cli
 
       - name: devspec doctor
         run: devspec doctor
@@ -195,11 +189,12 @@ jobs:
         run: |
           set -e
           shopt -s nullglob
+          mkdir -p .devspec-sarif
           had_drift=0
           for dir in .devspec/projects/*/; do
             slug="$(basename "$dir")"
             echo "::group::coherence $slug"
-            if ! devspec coherence "$slug" --json --block-only > /dev/null; then
+            if ! devspec coherence "$slug" --json --block-only --sarif ".devspec-sarif/$slug.sarif" > /dev/null; then
               echo "::error title=DevSpec drift in $slug::Run \`devspec coherence $slug\` locally to see details."
               had_drift=1
             fi
@@ -208,6 +203,18 @@ jobs:
           if [ "$had_drift" -ne 0 ]; then
             exit 1
           fi
+
+      # Surfaces coherence findings as code-scanning annotations on the PR.
+      # Requires GitHub Advanced Security on private repos (free on public),
+      # hence continue-on-error — the gate above already failed the job on
+      # blocking drift; this step is visibility, not enforcement.
+      - name: Upload coherence findings to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: .devspec-sarif
+          category: devspec-coherence
 
       - name: Workspace phase (informational)
         if: always()

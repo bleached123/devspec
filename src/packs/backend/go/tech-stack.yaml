@@ -19,3 +19,4 @@ backend:
     typecheck: "go vet ./..."
     test_unit: "go test -race -short ./..."
     test_integration: "go test -race -tags=integration ./..."
+    audit: "govulncheck ./..."

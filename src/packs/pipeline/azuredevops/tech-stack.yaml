@@ -1,0 +1,36 @@
+pipeline:
+  primary: azure-pipelines
+  vm_image: ubuntu-24.04
+  node_version: "22"
+  concurrency: batch-per-branch
+  permissions: least-privilege
+  required_checks:
+    - security
+    - quality
+    - test-unit
+    - test-integration
+    - test-e2e
+    - devspec
+  test_layers:
+    unit: required
+    integration: required
+    e2e: required-if-frontend
+  security:
+    secret_scanner: gitleaks
+    dependency_review: backend-audit-command
+    fail_on_severity: high
+    service_connections: workload-identity-federation
+    least_privilege_token: true
+  caching:
+    docker_buildx: pipeline-cache-task
+    language_native: pipeline-cache-task
+  branch_policies:
+    build_validation:
+      pipeline: ci
+      required: true
+      expire_after_updates: true
+    minimum_reviewers: 1
+    reset_votes_on_push: true
+    comment_resolution_required: true
+    work_item_linking: required
+    limit_merge_types: squash-or-rebase

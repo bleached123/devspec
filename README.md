@@ -198,7 +198,13 @@ The trade you make: every change must have a written contract before it gets bui
 
 ## Install
 
-DevSpec is a TypeScript CLI. From this repo:
+DevSpec is a TypeScript CLI, published to npm as **`devspec-cli`** (the command is still `devspec`):
+
+```bash
+npm install -g devspec-cli
+```
+
+Or build from source, from this repo:
 
 ```bash
 npm install
@@ -398,7 +404,8 @@ src/packs/
 │   ├── kubernetes/   (PSA restricted, native sidecars, Workload Identity)
 │   └── terraform/   (1.10+, ephemeral resources)
 └── pipeline/                          # optional — enforces CI/CD gates
-    └── github/   (security + lint + format + typecheck + unit/integration/e2e + caching + concurrency)
+    ├── github/        (GitHub Actions: security + lint + typecheck + 3 test layers + SARIF + caching)
+    └── azuredevops/   (Azure Pipelines: same six gates, ##vso annotations, branch policies + Environments)
 ```
 
 Each fragment has `tech-stack.yaml` (config) and `standards.md` (conventions). Backend and frontend also ship `dev-environment.yaml` (VS Code + devcontainer). `init` merges them all into your workspace.
@@ -439,7 +446,9 @@ devspec log <slug> "<dec>"    # append a timestamped decision to alignment.md
 
 ```
 devspec coherence <slug>      # artifact-to-artifact drift (11 rules)
+devspec coherence <slug> --sarif   # also write SARIF 2.1.0 (GitHub code scanning / ADO scans tab)
 devspec check                 # workspace + architecture guardrails
+devspec check --json          # machine-readable results for CI and tooling
 devspec doctor                # diagnose setup problems (workspace, tools, configs)
 devspec sync-contract <slug>  # reflect implementation renames back to contract.md
 ```
@@ -621,6 +630,7 @@ The workflow also enforces:
 - **Pinned actions** — major-tag pinning (`@v4`); SHA-pinning recommended in `standards.md` for release/deploy jobs.
 - **Layered caching** — Docker buildx layer cache via `cache-from: type=gha` + language-native caches per setup action.
 - **Inline failure annotations** — `::error::` and `::group::` markers surface drift on the PR's Files Changed tab.
+- **Code-scanning annotations** — the devspec job writes coherence findings as SARIF and uploads them via `codeql-action/upload-sarif`, so drift shows up in the Security tab and as inline annotations (free on public repos; needs GitHub Advanced Security on private ones — the step is `continue-on-error`, so it degrades gracefully).
 
 ### How commands flow into the workflow
 
@@ -642,7 +652,7 @@ Frontend fragments expose `commands.test_e2e` the same way. If no frontend is co
 
 ### Two-step setup
 
-**You must edit the workflow's install step.** It exits with a clear error by default — pick one of the documented install methods (npm package, git source, pre-built binary) for your environment. Once configured:
+The workflow's install step defaults to `npm install -g devspec-cli` (the published package). Pin a version, or switch to the commented git/source install if you run a fork or unreleased build. Then:
 
 1. Commit + push `.github/workflows/ci.yml`, `Dockerfile`, `docker-compose.yml`.
 2. In **GitHub → Settings → Branches → Branch protection rules**, add all six required status checks on `main`:
@@ -704,6 +714,39 @@ devspec release --dry-run      # preview without tagging
 It parses [Conventional Commits](https://www.conventionalcommits.org/) since the last `v*` tag, computes the next semver (`feat:` → minor, `fix:`/`perf:` → patch, `feat!:` or `BREAKING CHANGE` → major), generates a grouped CHANGELOG.md entry, creates an annotated tag with the changelog as the message, and (optionally) pushes. Pushing the tag triggers `release.yml`'s production deploy.
 
 **The full loop**: developer opens PR → `ci.yml` gates with 6 required jobs → merge → `release.yml` builds + deploys staging → `devspec release` cuts a tag → `release.yml` deploys production after approval. All steps reproducible from local Docker through to production using the same image.
+
+---
+
+## Azure DevOps integration — the `azuredevops` fragment
+
+The same six gates, generated for Azure Pipelines. Pick it at init time (or pass `--platform azuredevops` to `ci init` directly):
+
+```bash
+devspec init --backend dotnet --architecture clean-architecture --methodology tdd --pipeline azuredevops
+devspec env generate    # writes Dockerfile + docker-compose.yml (used by the pipeline)
+devspec ci init         # writes azure-pipelines.yml + azure-pipelines-release.yml
+                        #        + .azuredevops/pull_request_template.md + .devspec/release.yaml
+```
+
+What's the same as the GitHub fragment: the six required jobs (security / quality / test-unit / test-integration / test-e2e / devspec), Docker-based command execution from the backend fragment's `commands:` block, the `.devspec/release.yaml` deploy config, and `devspec release` for tag-driven production deploys.
+
+What's platform-specific:
+
+- **Failure surfacing** uses `##vso[task.logissue type=error]` + `##[group]` markers — drift annotates the run summary and PR checks panel natively.
+- **Dependency review** has no ADO equivalent of GitHub's `dependency-review-action`, so the security job runs the backend's native audit instead (`pnpm audit`, `cargo audit`, `govulncheck`, `pip-audit`, `dotnet list package --vulnerable`) — wired from the new `commands.audit` key every backend fragment ships.
+- **SARIF findings** are published as a `CodeAnalysisLogs` pipeline artifact — install the *SARIF SAST Scans Tab* marketplace extension to get a Scans tab on every run, or skip it and rely on the `##vso` annotations.
+- **PR template** lands at `.azuredevops/pull_request_template.md` and includes an `AB#<id>` slot, so Azure Boards work items auto-link and transition on merge.
+- **Secret scanning** runs gitleaks via its Docker image — no marketplace extension required.
+
+### One-time Azure DevOps setup
+
+1. Commit + push, then **Pipelines → New pipeline** twice: point one at `azure-pipelines.yml` (name it `ci`), one at `azure-pipelines-release.yml` (name it `release`).
+2. **Project Settings → Repositories → your repo → Policies → `main`**: add a **Build Validation** policy requiring the `ci` pipeline, plus minimum 1 reviewer, comment resolution, and linked work items. This is the ADO equivalent of GitHub branch protection.
+3. **Pipelines → Environments**: create `staging` and `production`; add **Approvals and checks** on `production`. Approval lives there, not in YAML.
+4. In `azure-pipelines-release.yml`, fill in the three variables at the top (`dockerRegistryServiceConnection`, `containerRegistry`, `imageRepository`) after creating a Docker registry service connection.
+5. Edit the `deploy_cmd` entries in `.devspec/release.yaml` for your deploy target, then rerun `devspec ci init --force`.
+
+The conventions behind these choices (branch policies, workload identity federation over stored credentials, `Cache@2` keys, what to avoid) live in `src/packs/pipeline/azuredevops/standards.md` and are merged into your workspace's `standards.md` at init.
 
 ---
 

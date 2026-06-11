@@ -1,6 +1,9 @@
+import path from "node:path";
 import { Command } from "commander";
 import chalk from "chalk";
+import fs from "fs-extra";
 import { requireWorkspaceRoot } from "../core/workspace.js";
+import { buildSarif } from "../core/sarif.js";
 import { loadChangeState } from "../core/change.js";
 import {
   buildWorkspaceContext,
@@ -15,7 +18,11 @@ export const coherenceCommand = new Command("coherence")
   .argument("<slug>", "Change slug (e.g. add-bookings)")
   .option("--json", "Emit machine-readable JSON instead of human output", false)
   .option("--block-only", "Only report blocking drifts (exit 1 only on block)", false)
-  .action(async (slug: string, options: { json: boolean; blockOnly: boolean }) => {
+  .option(
+    "--sarif [file]",
+    "Also write findings as SARIF 2.1.0 (default file: devspec-coherence-<slug>.sarif) for GitHub code scanning / ADO SARIF viewers"
+  )
+  .action(async (slug: string, options: { json: boolean; blockOnly: boolean; sarif?: string | boolean }) => {
     const root = await requireWorkspaceRoot();
     const workspace = await loadWorkspaceState(root);
     const state = await loadChangeState(root, slug);
@@ -36,6 +43,18 @@ export const coherenceCommand = new Command("coherence")
     }
     report.blockingCount = report.drifts.filter((d) => d.severity === "block").length;
     report.warningCount = report.drifts.filter((d) => d.severity === "warn").length;
+
+    if (options.sarif) {
+      const sarifPath = path.resolve(
+        typeof options.sarif === "string"
+          ? options.sarif
+          : `devspec-coherence-${slug}.sarif`
+      );
+      await fs.outputFile(sarifPath, JSON.stringify(buildSarif(report, slug), null, 2));
+      if (!options.json) {
+        console.log(chalk.dim(`SARIF written to ${path.relative(process.cwd(), sarifPath)}`));
+      }
+    }
 
     if (workspace.strict && !options.json) {
       console.log(

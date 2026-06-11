@@ -228,6 +228,67 @@ describe("devspec ci init", () => {
   );
 
   it(
+    "emits Azure Pipelines scaffolding when --pipeline azuredevops is configured",
+    { timeout: 45000 },
+    async () => {
+      await withTempWorkspace(async (root) => {
+        await setupWorkspace(root, { backend: "go", pipeline: "azuredevops" });
+
+        const r = await runCli(["ci", "init"], root);
+        expect(r.exitCode).toBe(0);
+        expect(r.stdout).toContain("pipeline/azuredevops fragment");
+        expect(r.stdout).toContain("azure-pipelines.yml");
+        expect(r.stdout).toContain(".azuredevops/pull_request_template.md");
+        expect(r.stdout).toContain("azure-pipelines-release.yml");
+
+        const pipeline = await fs.readFile(
+          path.join(root, "azure-pipelines.yml"),
+          "utf8"
+        );
+        // Six gates as jobs
+        expect(pipeline).toMatch(/job: security/);
+        expect(pipeline).toMatch(/job: quality/);
+        expect(pipeline).toMatch(/job: test_unit/);
+        expect(pipeline).toMatch(/job: test_integration/);
+        expect(pipeline).toMatch(/job: test_e2e/);
+        expect(pipeline).toMatch(/job: devspec/);
+        // Security tooling + ADO-native failure surfacing
+        expect(pipeline).toContain("gitleaks");
+        expect(pipeline).toContain("govulncheck ./...");
+        expect(pipeline).toContain("##vso[task.logissue type=error]");
+        // Install step uses the published package, not a placeholder
+        expect(pipeline).toContain("npm install -g devspec-cli");
+        // No frontend → e2e condition is statically false
+        expect(pipeline).toContain("eq('false', 'true')");
+        // Backend commands substituted from the go fragment
+        expect(pipeline).toContain("golangci-lint run ./...");
+        expect(pipeline).toContain("go test -race -short ./...");
+
+        const releasePipeline = await fs.readFile(
+          path.join(root, "azure-pipelines-release.yml"),
+          "utf8"
+        );
+        expect(releasePipeline).toMatch(/stage: Build/);
+        expect(releasePipeline).toMatch(/environment: staging/);
+        expect(releasePipeline).toMatch(/environment: production/);
+        expect(releasePipeline).toContain("Docker@2");
+        expect(releasePipeline).toContain("'v*.*.*'");
+        // Multi-line deploy_cmd substitution keeps indentation (valid YAML)
+        const YAML = await import("yaml");
+        expect(() => YAML.parse(releasePipeline)).not.toThrow();
+        expect(() => YAML.parse(pipeline)).not.toThrow();
+
+        const prTemplate = await fs.readFile(
+          path.join(root, ".azuredevops", "pull_request_template.md"),
+          "utf8"
+        );
+        expect(prTemplate).toContain("AB#");
+        expect(prTemplate).toContain("Spec checklist");
+      });
+    }
+  );
+
+  it(
     "PR template from fragment includes security & quality checklist",
     { timeout: 30000 },
     async () => {

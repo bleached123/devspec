@@ -1,7 +1,17 @@
 {
-  "name": "devspec",
+  "name": "devspec-cli",
   "version": "0.1.0",
-  "description": "Spec-driven engineering standards and guardrails CLI",
+  "description": "Spec-driven engineering standards and guardrails CLI (command: devspec)",
+  "license": "MIT",
+  "author": "Josh Boothroyd",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bleached123/devspec.git"
+  },
+  "homepage": "https://github.com/bleached123/devspec#readme",
+  "bugs": {
+    "url": "https://github.com/bleached123/devspec/issues"
+  },
   "type": "module",
   "bin": {
     "devspec": "./dist/cli.js"

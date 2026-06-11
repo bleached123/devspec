@@ -19,3 +19,4 @@ backend:
     typecheck: "pyright"
     test_unit: "pytest -m 'not integration' --strict-markers"
     test_integration: "pytest -m integration --strict-markers"
+    audit: "pip-audit"

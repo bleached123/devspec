@@ -40,7 +40,7 @@ export const initCommand = new Command("init")
     "Frontend framework (svelte, blazor, react, vue) — opt-in"
   )
   .option("--infrastructure <name>", "Infrastructure pattern (kubernetes, terraform) — opt-in")
-  .option("--pipeline <name>", "CI/CD pipeline (e.g. github) — opt-in; enforces security/lint/quality/test gates")
+  .option("--pipeline <name>", "CI/CD pipeline (github, azuredevops) — opt-in; enforces security/lint/quality/test gates")
   .option("--force", "Overwrite an existing .devspec directory", false)
   .action(async (options: InitOptions) => {
     const root = process.cwd();

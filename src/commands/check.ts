@@ -35,7 +35,8 @@ const SKIP_DIRS = new Set([
 
 export const checkCommand = new Command("check")
   .description("Run DevSpec workspace checks")
-  .action(async () => {
+  .option("--json", "Output results as JSON (for CI and tooling)", false)
+  .action(async (options: { json: boolean }) => {
     const root = await requireWorkspaceRoot();
     const config = await readDevspecConfig(root);
     const results: CheckResult[] = [];
@@ -89,11 +90,23 @@ export const checkCommand = new Command("check")
     const archResult = await runArchitectureCheck(root, config);
     if (archResult) results.push(archResult);
 
-    let failed = 0;
+    const failed = results.filter((r) => !r.ok).length;
+
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          { ok: failed === 0, total: results.length, failed, results },
+          null,
+          2
+        )
+      );
+      if (failed > 0) process.exitCode = 1;
+      return;
+    }
+
     for (const r of results) {
       const tag = r.ok ? chalk.green("PASS") : chalk.red("FAIL");
       console.log(`  ${tag}  ${r.id} — ${r.message}`);
-      if (!r.ok) failed++;
     }
 
     console.log("");
