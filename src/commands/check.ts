@@ -76,13 +76,17 @@ export const checkCommand = new Command("check")
         const incomplete = Object.entries(stages)
           .filter(([, v]) => v !== "done")
           .map(([k]) => k);
+        // A change mid-lifecycle is normal state, not a failure — `check` is
+        // a guardrail gate (and runs on every PR in the generated CI), so it
+        // must stay green while work is in flight. Stage progress lives in
+        // `devspec status`; drift gating lives in `devspec coherence`.
         results.push({
           id: `project.${slug}`,
-          ok: incomplete.length === 0,
+          ok: true,
           message:
             incomplete.length === 0
               ? `change "${slug}" — all stages done`
-              : `change "${slug}" — pending: ${incomplete.join(", ")}`,
+              : `change "${slug}" — in progress (pending: ${incomplete.join(", ")})`,
         });
       }
     }
