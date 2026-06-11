@@ -72,7 +72,6 @@ jobs:
           echo "::group::devspec init"
           node "$cli" init --backend go --architecture clean-architecture --methodology tdd --pipeline github
           test -f .devspec/devspec.yaml
-          test -f .devspec/release.yaml
           test -f .devspec/standards/standards.md
           test -f CLAUDE.md
           echo "::endgroup::"
@@ -106,6 +105,7 @@ jobs:
           test -f .github/workflows/ci.yml
           test -f .github/workflows/release.yml
           test -f .github/pull_request_template.md
+          test -f .devspec/release.yaml
           # Generated release.yml contains expected gates
           grep -q "name: release" .github/workflows/release.yml
           grep -q "deploy-staging" .github/workflows/release.yml

@@ -1,0 +1,14 @@
+services:
+  dev:
+    build: .
+    command: sh
+    stdin_open: true
+    tty: true
+
+  typecheck:
+    build: .
+    command: npm run typecheck
+
+  test:
+    build: .
+    command: npm test
