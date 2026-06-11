@@ -134,7 +134,11 @@ describe("devspec doctor", () => {
     { timeout: 45000 },
     async () => {
       await withTempWorkspace(async (root) => {
-        await setupWorkspace(root);
+        // node-typescript: doctor probes the backend toolchain (`node` here),
+        // which is the only one guaranteed on every machine running this
+        // suite. The default rust backend made this test depend on cargo
+        // being preinstalled on the CI runner image.
+        await setupWorkspace(root, { backend: "node-typescript" });
         await runCli(["env", "generate"], root);
         const r = await runCli(["doctor"], root);
         expect(r.exitCode).toBe(0);
