@@ -35,6 +35,31 @@ describe("devspec check --json", () => {
   );
 });
 
+describe("devspec plan --json", () => {
+  it(
+    "returns the created change as JSON, and errors as JSON too",
+    { timeout: 45000 },
+    async () => {
+      await withTempWorkspace(async (root) => {
+        await setupWorkspace(root);
+
+        const r = await runCli(["plan", "Add bookings flow", "--json"], root);
+        expect(r.exitCode).toBe(0);
+        const parsed = JSON.parse(r.stdout);
+        expect(parsed.ok).toBe(true);
+        expect(parsed.slug).toBe("add-bookings-flow");
+        expect(parsed.docs).toContain("contract.md");
+        expect(parsed.stages.discovery).toBe("pending");
+
+        // Duplicate slug → ok:false + exit 1, still valid JSON on stdout
+        const r2 = await runCli(["plan", "Add bookings flow", "--json"], root);
+        expect(r2.exitCode).toBe(1);
+        expect(JSON.parse(r2.stdout).ok).toBe(false);
+      });
+    }
+  );
+});
+
 describe("devspec coherence --sarif", () => {
   it(
     "writes a valid SARIF 2.1.0 file with one result per drift",

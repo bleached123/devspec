@@ -22,21 +22,29 @@ export const planCommand = new Command("plan")
   .description("Create a new lifecycle change directory")
   .argument("<title>", "Title of the change (will be kebab-cased)")
   .option("--name <slug>", "Override the kebab-cased slug")
-  .action(async (title: string, options: { name?: string }) => {
+  .option("--json", "Emit the created change as JSON (for tooling)", false)
+  .action(async (title: string, options: { name?: string; json: boolean }) => {
     const root = await requireWorkspaceRoot();
     const config = await readDevspecConfig(root);
     const slug = options.name ? kebabCase(options.name) : kebabCase(title);
 
-    if (!slug) {
-      console.error(chalk.red("Could not derive a slug from the title."));
+    const fail = (message: string) => {
+      if (options.json) {
+        console.log(JSON.stringify({ ok: false, error: message }));
+      } else {
+        console.error(chalk.red(message));
+      }
       process.exitCode = 1;
+    };
+
+    if (!slug) {
+      fail("Could not derive a slug from the title.");
       return;
     }
 
     const projectDir = devspecPath(root, "projects", slug);
     if (await fs.pathExists(projectDir)) {
-      console.error(chalk.red(`Change "${slug}" already exists at ${projectDir}.`));
-      process.exitCode = 1;
+      fail(`Change "${slug}" already exists at ${projectDir}.`);
       return;
     }
 
@@ -68,6 +76,25 @@ export const planCommand = new Command("plan")
       path.join(projectDir, "status.yaml"),
       YAML.stringify(status)
     );
+
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            slug,
+            title,
+            dir: path.relative(root, projectDir),
+            methodology: config.methodology,
+            stages: Object.fromEntries(LIFECYCLE_STAGES.map((s) => [s, "pending"])),
+            docs: LIFECYCLE_STAGES.map((s) => `${s}.md`),
+          },
+          null,
+          2
+        )
+      );
+      return;
+    }
 
     console.log(chalk.green(`Created change "${slug}".`));
     console.log(`  methodology: ${config.methodology}`);
