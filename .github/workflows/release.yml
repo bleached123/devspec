@@ -4,7 +4,7 @@ name: release
 #
 # One-time setup (per repo):
 #   1. Create an npm Granular Access Token with publish rights for the
-#      `devspec` package on https://www.npmjs.com/settings/<user>/tokens
+#      `devspec-cli` package on https://www.npmjs.com/settings/<user>/tokens
 #   2. Add it as a repo secret named NPM_TOKEN
 #      (Settings → Secrets and variables → Actions → New repository secret)
 #   3. Create a GitHub Environment called `npm-publish` (Settings →
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: npm-publish
-      url: https://www.npmjs.com/package/devspec
+      url: https://www.npmjs.com/package/devspec-cli
     permissions:
       contents: write   # to create the GitHub Release
       id-token: write   # for npm provenance (OIDC)
