@@ -11,3 +11,5 @@ coverage/
 
 # DevSpec loop state (per-machine, not portable)
 .devspec/loop-state.yaml
+
+claude-manager.zip
